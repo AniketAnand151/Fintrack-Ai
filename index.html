@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinTrack Neon Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  </head>
+  <body>
+    <main class="dashboard">
+      <div class="dashboard-left">
+        <section class="charts-top" aria-label="Main finance charts">
+        <article class="chart-panel clickable" id="budgetPanel" tabindex="0" role="button">
+          <div class="section-heading">
+            <div>
+              <h2>Budget</h2>
+              <p class="budget-warning" id="budgetWarning">Expense overflow</p>
+            </div>
+          </div>
+          <div class="budget-visual">
+            <canvas id="budgetPie" width="520" height="340"></canvas>
+            <div class="speed-stat">
+              <span>Avg daily spent</span>
+              <strong id="avgDailySpend">₹0</strong>
+            </div>
+            <span class="chip budget-badge" id="monthlyBudget">$400/$1000</span>
+          </div>
+          <div class="legend" id="budgetLegend"></div>
+        </article>
+
+        <article class="chart-panel clickable" id="expensePanel" tabindex="0" role="button">
+          <div class="section-heading">
+            <div>
+              <h2>Expenses</h2>
+            </div>
+            <div class="chart-actions">
+              <span class="chip hot" id="spentToday">$94 today</span>
+            </div>
+          </div>
+          <div class="expense-combo">
+            <div class="meter-stack compact-meter">
+              <div class="meter-ring">
+                <canvas id="meterCanvas" width="220" height="220"></canvas>
+              </div>
+            </div>
+            <div class="legend vertical-legend" id="categoryLegend"></div>
+          </div>
+          <canvas class="hidden-chart" id="categoryPie" width="520" height="340"></canvas>
+        </article>
+
+      </section>
+
+      <section class="lower-grid">
+        <article class="chart-panel day-panel" aria-label="Day expenses pie chart">
+          <div class="section-heading">
+            <div>
+              <h2>Today</h2>
+            </div>
+          </div>
+          <canvas id="dayPie" width="460" height="320"></canvas>
+          <div class="legend" id="dayLegend"></div>
+        </article>
+
+        <article class="chart-panel trend-panel" aria-label="Expense comparison graph">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">30 days</p>
+              <h2>Spending</h2>
+            </div>
+            <span class="chip" id="topCategory">Food leads</span>
+          </div>
+          <canvas id="comparisonChart" width="900" height="360"></canvas>
+        </article>
+      </section>
+      </div>
+
+      <span class="date-pill page-date" id="currentDate"></span>
+
+
+      <section class="advisor" id="advisor" aria-label="AI finance advisor">
+        <div class="chat-head">
+          <strong>Finance AI</strong>
+          <button class="icon-button" id="moveChatBtn" type="button" aria-label="Move chat box">⇄</button>
+        </div>
+        <div class="sample-questions" aria-label="Sample questions">
+          <button type="button" data-question="Set my budget to 4000, save 500, daily limit 150">Set budget</button>
+          <button type="button" data-question="I spent 50 on Food today">Add expense</button>
+          <button type="button" data-question="How much budget is left?">Budget left?</button>
+        </div>
+        <div class="chat-log" id="chatLog" aria-live="polite"></div>
+        <form class="chat-form" id="chatForm">
+          <input id="chatInput" type="text" placeholder="Ask for spending advice" />
+          <button type="submit" aria-label="Send">Send</button>
+        </form>
+      </section>
+    </main>
+
+    <dialog class="modal" id="budgetModal">
+      <form method="dialog" class="modal-card" id="budgetForm">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Budget setup</p>
+            <h2>Monthly plan</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="button" data-close-modal>x</button>
+        </div>
+        <label>
+          Monthly budget
+          <input id="budgetInput" type="number" min="1" step="1" value="3600" />
+        </label>
+        <label>
+          Monthly savings goal
+          <input id="savingsInput" type="number" min="0" step="1" value="450" />
+        </label>
+        <label>
+          Daily spending limit
+          <input id="dailyLimitInput" type="number" min="1" step="1" value="120" />
+        </label>
+        <button type="submit">Update budget</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="expenseModal">
+      <form method="dialog" class="modal-card" id="expenseForm">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">New expense</p>
+            <h2>Add spending</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="button" data-close-modal>x</button>
+        </div>
+        <div class="expense-preview">
+          <canvas id="modalExpensePie" width="360" height="190"></canvas>
+          <div>
+            <p class="eyebrow">Current expense</p>
+            <h2>Add expense</h2>
+            <p>New spending updates this pie, the main chart, and the meter.</p>
+          </div>
+        </div>
+
+        <label>
+          Category
+          <select id="expenseCategory">
+            <option>Food</option>
+            <option>Health</option>
+            <option>Rent</option>
+            <option>Travel</option>
+            <option>Add new category</option>
+          </select>
+        </label>
+        <div class="custom-category" id="customCategoryFields">
+          <label>
+            New category
+            <input id="newCategoryName" type="text" placeholder="Education, gifts, fuel" />
+          </label>
+          <label>
+            Category color
+            <input id="newCategoryColor" type="color" value="#ffd166" />
+          </label>
+        </div>
+        <label>
+          Amount
+          <input id="expenseAmount" type="number" min="1" step="1" placeholder="25" required />
+        </label>
+        <button type="submit">Add expense</button>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
